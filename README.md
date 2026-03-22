@@ -1,18 +1,13 @@
-# Projeto de Análise de Dados Agropecuários
+# Dados Agropecuários → PostgreSQL → Power BI
 
-Sistema automatizado para processamento de dados agropecuários, integração com PostgreSQL e visualização em Power BI.
+Pipeline pra consolidar CSVs de dados agropecuários, subir pro PostgreSQL e conectar no Power BI.
 
-## Descrição
-
-Este projeto unifica múltiplos arquivos CSV de dados agropecuários, processa as informações e as organiza em um banco de dados PostgreSQL, facilitando análises e a criação de dashboards no Power BI.
-
-## Estrutura do Projeto
-
+## Estrutura
 ```
 .
 ├── data/
-│   ├── csvs/              # Arquivos CSV originais por categoria
-│   └── geral.csv          # CSV unificado (gerado)
+│   ├── csvs/          # CSVs originais por categoria
+│   └── geral.csv      # gerado pelo Unificar_CSVs.py
 ├── scripts/
 │   ├── Unificar_CSVs.py
 │   ├── Teste_Conexao.py
@@ -26,24 +21,16 @@ Este projeto unifica múltiplos arquivos CSV de dados agropecuários, processa a
 └── README.md
 ```
 
-## Pré-requisitos
-
-- Python 3.8+
-- PostgreSQL 12+
-- Power BI Desktop (para visualização)
-
-### Dependências Python
-
+## Dependências
 ```bash
 pip install pandas sqlalchemy psycopg2-binary python-dotenv
 ```
 
+Python 3.8+ e PostgreSQL 12+.
+
 ## Configuração
 
-### 1. Variáveis de Ambiente
-
-Crie um arquivo `.env` na raiz do projeto:
-
+Crie um `.env` na raiz:
 ```env
 POSTGRES_USER=seu_usuario
 POSTGRES_PASSWORD=sua_senha
@@ -52,196 +39,78 @@ POSTGRES_PORT=5432
 POSTGRES_DB=nome_do_banco
 ```
 
-### 2. Banco de Dados
+Depois rode os comandos do `POSTGRESQL.sql` pra criar as tabelas.
 
-Execute os comandos SQL do arquivo `POSTGRESQL.sql` para criar as estruturas necessárias no PostgreSQL.
+## Ordem de execução
 
-## Fluxo de Trabalho
-
-### Etapa 1: Unificar CSVs
-
-Consolida múltiplos arquivos CSV em um único arquivo geral.
-
+**1. Unificar os CSVs**
 ```bash
 python Unificar_CSVs.py
 ```
+Lê tudo em `data/csvs/`, extrai a categoria do nome do arquivo e gera o `data/geral.csv`.
 
-**Entrada:** Arquivos CSV na pasta `data/csvs/`  
-**Saída:** `data/geral.csv`
-
-O script:
-- Lê todos os arquivos CSV da pasta especificada
-- Extrai a categoria do nome do arquivo
-- Padroniza as colunas para `periodo`, `valor` e `categoria`
-- Gera um arquivo unificado
-
-### Etapa 2: Testar Conexão
-
-Verifica se a conexão com o PostgreSQL está funcionando corretamente.
-
+**2. Testar conexão**
 ```bash
 python Teste_Conexao.py
 ```
+Confirma que o banco tá acessível e as credenciais do `.env` estão certas.
 
-Confirma:
-- Conectividade com o banco de dados
-- Versão do PostgreSQL instalada
-- Credenciais do arquivo `.env`
-
-### Etapa 3: Debug (Opcional)
-
-Inspeciona intervalos específicos do CSV para validação dos dados.
-
+**3. Debug (opcional)**
 ```bash
 python Debug.py
 ```
+Inspeciona um intervalo de linhas do CSV. Útil pra conferir os dados antes de subir.
 
-Útil para:
-- Conferir formato dos dados
-- Identificar inconsistências
-- Validar transformações antes do import
-
-### Etapa 4: Importar para PostgreSQL
-
-Cria tabelas separadas para cada categoria no banco de dados.
-
+**4. Importar pro PostgreSQL**
 ```bash
 python Import_PostgreSQL.py
 ```
+Cria uma tabela separada por categoria: `agro_bovinos`, `agro_suinos`, etc.
 
-Gera tabelas no formato: `agro_bovinos`, `agro_suinos`, `agro_cafe`, etc.
-
-### Etapa 5: Criar Tabelas Públicas
-
-Alternativa ao script anterior, permite especificar o caminho do CSV manualmente.
-
-```bash
-python Criar_PublicTable.py
-```
-
-### Etapa 6: Criar Tabela Única
-
-Cria uma tabela consolidada otimizada para conexão com Power BI.
-
+**5. Criar tabela única**
 ```bash
 python Criar_TabelaUnica.py
 ```
+Gera a tabela `agro_dados` com tudo consolidado, índices e NOT NULL — pronta pro Power BI.
 
-**Resultado:** Tabela `agro_dados` com todos os registros unificados, incluindo:
-- Índices otimizados para consultas
-- Constraints NOT NULL
-- Estrutura pronta para dashboards
+## Conectar no Power BI
 
-### Etapa 7: Dashboard no Power BI
+Obter Dados → Banco de Dados PostgreSQL → conecta com as credenciais do `.env` → importa `agro_dados`.
 
-1. Abra o Power BI Desktop
-2. Selecione "Obter Dados" > "Banco de Dados PostgreSQL"
-3. Configure a conexão usando as credenciais do `.env`
-4. Importe a tabela `agro_dados`
-5. Crie as visualizações desejadas
+## Estrutura dos dados
 
-## Estrutura dos Dados
-
-### CSV Original
-
+CSV original:
 ```csv
 periodo,valor
 2020,1500000
-2021,1750000
 ```
 
-### Tabela Unificada
-
+Após unificação:
 ```csv
 periodo,categoria,valor
 2020,bovinos,1500000
-2021,bovinos,1750000
-2020,suinos,980000
 ```
 
-### Banco de Dados PostgreSQL
-
-**Opção 1: Tabelas Separadas**
-- `agro_bovinos`
-- `agro_suinos`
-- `agro_ovos`
-- `agro_leite`
-- `agro_cafe`
-- `agro_galinaceos`
-
-**Opção 2: Tabela Única** (recomendado para Power BI)
-- `agro_dados`
-
-## Consultas Úteis
-
+## Queries úteis
 ```sql
--- Total de registros
 SELECT COUNT(*) FROM public.agro_dados;
 
--- Visualizar amostra
 SELECT * FROM public.agro_dados LIMIT 10;
 
--- Dados formatados para relatório
-SELECT
-    periodo AS "Ano de Faturamento",
-    categoria AS "Alimento Agropecuário",
-    valor AS "Valor em Reais"
-FROM public.agro_dados;
-
--- Agregação por categoria
-SELECT 
-    categoria,
-    SUM(valor) as total,
-    AVG(valor) as media
+SELECT categoria, SUM(valor) as total, AVG(valor) as media
 FROM public.agro_dados
 GROUP BY categoria;
 ```
 
-## Manutenção
+## Atualizar dados
 
-### Atualizar Dados
+1. Joga os novos CSVs em `data/csvs/`
+2. Roda `Unificar_CSVs.py`
+3. Roda `Criar_TabelaUnica.py`
+4. Atualiza no Power BI
 
-Para adicionar novos dados:
+## Erros comuns
 
-1. Adicione novos CSVs em `data/csvs/`
-2. Execute `Unificar_CSVs.py`
-3. Execute `Criar_TabelaUnica.py` (modo replace)
-4. Atualize o dashboard no Power BI
-
-### Limpar Banco de Dados
-
-```sql
-DROP TABLE IF EXISTS
-    public.agro_bovinos,
-    public.agro_suinos,
-    public.agro_ovos,
-    public.agro_leite,
-    public.agro_galinaceos,
-    public.agro_cafe,
-    public.agro_dados;
-```
-
-## Tratamento de Erros Comuns
-
-**Erro de Conexão PostgreSQL:**
-- Verifique se o serviço PostgreSQL está ativo
-- Confirme as credenciais no arquivo `.env`
-- Teste a conexão com `Teste_Conexao.py`
-
-**CSV não encontrado:**
-- Verifique os caminhos nos scripts
-- Certifique-se de que a pasta `data/csvs/` existe
-- Confirme a estrutura das colunas nos CSVs
-
-**Erro no Power BI:**
-- Verifique se os índices foram criados
-- Confirme as constraints NOT NULL
-- Teste as queries SQL diretamente no PostgreSQL
-
-## Licença
-
-Este projeto está sob a licença MIT.
-
-## Contato
-
-Para dúvidas ou sugestões, abra uma issue no repositório.
+- **Conexão recusada** — verifica se o PostgreSQL tá rodando e as credenciais no `.env`
+- **CSV não encontrado** — confirma o caminho e se a pasta `data/csvs/` existe
+- **Erro no Power BI** — testa a query direto no PostgreSQL primeiro
